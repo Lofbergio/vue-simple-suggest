@@ -26,7 +26,23 @@ function hasKeyCode(arr, event) {
   }
 }
 
-function _finally(body, finalizer) {
+function _finallyRethrows(body, finalizer) {
+  try {
+    var result = body();
+  } catch (e) {
+    return finalizer(true, e);
+  }
+  if (result && result.then) {
+    return result.then(finalizer.bind(null, false), finalizer.bind(null, true));
+  }return finalizer(false, value);
+}function _rethrow(thrown, value) {
+  if (thrown) throw value;return value;
+}function _await(value, then, direct) {
+  if (direct) {
+    return then ? then(value) : value;
+  }value = Promise.resolve(value);
+  return then ? value.then(then) : value;
+}function _finally(body, finalizer) {
   try {
     var result = body();
   } catch (e) {
@@ -46,11 +62,6 @@ function _finally(body, finalizer) {
   var result = body();if (result && result.then) {
     return result.then(_empty);
   }
-}
-function _await(value, then, direct) {
-  if (direct) {
-    return then ? then(value) : value;
-  }value = Promise.resolve(value);return then ? value.then(then) : value;
 }const _async = function () {
   try {
     if (isNaN.apply(null, {})) {
@@ -117,18 +128,17 @@ var VueSimpleSuggest = {
     get event() {
       return event;
     }
-  }, props: {
+  },
+  props: {
     styles: {
       type: Object,
       default: () => ({})
     },
     controls: {
       type: Object,
-      default: () => defaultControls
-    },
+      default: () => defaultControls },
     minLength: {
-      type: Number,
-      default: 1
+      type: Number, default: 1
     },
     maxSuggestions: {
       type: Number,
@@ -136,7 +146,8 @@ var VueSimpleSuggest = {
     },
     displayAttribute: {
       type: String,
-      default: 'title' },
+      default: 'title'
+    },
     valueAttribute: {
       type: String,
       default: 'id'
@@ -307,7 +318,9 @@ var VueSimpleSuggest = {
       return this.isPlainSuggestion ? obj : typeof obj !== undefined ? fromPath(obj, attr) : obj;
     },
     displayProperty(obj) {
-      return String(this.getPropertyByAttribute(obj, this.displayAttribute));
+      let value = String(this.getPropertyByAttribute(obj, this.displayAttribute));
+      if (value === 'null') value = '';
+      return value;
     },
     valueProperty(obj) {
       return this.getPropertyByAttribute(obj, this.valueAttribute);
@@ -323,6 +336,7 @@ var VueSimpleSuggest = {
 
       this.$emit('select', item);
 
+      this.genSuggestions();
       this.autocompleteText(this.displayProperty(item));
     },
     hover(item, elem) {
@@ -346,6 +360,7 @@ var VueSimpleSuggest = {
         if (this.textLength >= this.minLength && (this.suggestions.length > 0 || !this.miscSlotsAreEmpty())) {
           this.listShown = true;
           this.$emit('show-list');
+          this.inputElement.setSelectionRange(0, this.inputElement.value.length);
         }
       }
     },
@@ -486,10 +501,7 @@ var VueSimpleSuggest = {
           return _invokeIgnored(function () {
             if (_this2.canSend) {
               _this2.canSend = false;
-              var _$set = _this2.$set;
-              return _await(_this2.getSuggestions(_this2.text), function (_this2$getSuggestions) {
-                _$set.call(_this2, _this2, 'suggestions', _this2$getSuggestions);
-              });
+              return _awaitIgnored(_this2.genSuggestions());
             }
           });
         }, function (e) {
@@ -508,21 +520,21 @@ var VueSimpleSuggest = {
         return _this2.suggestions;
       });
     }),
-    getSuggestions: _async(function (value) {
+    genSuggestions: _async(function () {
       var _this3 = this;
 
-      value = value || '';
+      let value = _this3.text || '';
 
       if (value.length < _this3.minLength) {
         if (_this3.listShown) {
           _this3.hideList();
-          return [];
+          _this3.$set(_this3, 'suggestions', []);
+          return;
         }
 
-        return _this3.suggestions;
+        _this3.$set(_this3, 'suggestions', _this3.suggestions);
+        return;
       }
-
-      _this3.selected = null;
 
       // Start request if can
       if (_this3.listIsRequest) {
@@ -534,7 +546,7 @@ var VueSimpleSuggest = {
       }
 
       let result = [];
-      return _finally(function () {
+      return _finallyRethrows(function () {
         return _catch(function () {
           return _invoke(function () {
             if (_this3.listIsRequest) {
@@ -567,19 +579,19 @@ var VueSimpleSuggest = {
             throw e;
           }
         });
-      }, function () {
+      }, function (_wasThrown, _result2) {
         if (_this3.maxSuggestions) {
           result.splice(_this3.maxSuggestions);
         }
 
-        return result;
+        _this3.$set(_this3, 'suggestions', result);
+        return _rethrow(_wasThrown, _result2);
       });
     }),
 
     clearSuggestions() {
       this.suggestions.splice(0);
-    }
-  }
+    } }
 };
 
 export default VueSimpleSuggest;

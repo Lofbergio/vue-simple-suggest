@@ -42,7 +42,23 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
   return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
 };
 
-function _finally(body, finalizer) {
+function _finallyRethrows(body, finalizer) {
+  try {
+    var result = body();
+  } catch (e) {
+    return finalizer(true, e);
+  }
+  if (result && result.then) {
+    return result.then(finalizer.bind(null, false), finalizer.bind(null, true));
+  }return finalizer(false, value);
+}function _rethrow(thrown, value) {
+  if (thrown) throw value;return value;
+}function _await(value, then, direct) {
+  if (direct) {
+    return then ? then(value) : value;
+  }value = Promise.resolve(value);
+  return then ? value.then(then) : value;
+}function _finally(body, finalizer) {
   try {
     var result = body();
   } catch (e) {
@@ -62,11 +78,6 @@ function _finally(body, finalizer) {
   var result = body();if (result && result.then) {
     return result.then(_empty);
   }
-}
-function _await(value, then, direct) {
-  if (direct) {
-    return then ? then(value) : value;
-  }value = Promise.resolve(value);return then ? value.then(then) : value;
 }var _async = function () {
   try {
     if (isNaN.apply(null, {})) {
@@ -133,7 +144,8 @@ var VueSimpleSuggest = {
     get event() {
       return event;
     }
-  }, props: {
+  },
+  props: {
     styles: {
       type: Object,
       default: function _default() {
@@ -144,11 +156,9 @@ var VueSimpleSuggest = {
       type: Object,
       default: function _default() {
         return defaultControls;
-      }
-    },
+      } },
     minLength: {
-      type: Number,
-      default: 1
+      type: Number, default: 1
     },
     maxSuggestions: {
       type: Number,
@@ -156,7 +166,8 @@ var VueSimpleSuggest = {
     },
     displayAttribute: {
       type: String,
-      default: 'title' },
+      default: 'title'
+    },
     valueAttribute: {
       type: String,
       default: 'id'
@@ -351,7 +362,9 @@ var VueSimpleSuggest = {
       return this.isPlainSuggestion ? obj : (typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== undefined ? fromPath(obj, attr) : obj;
     },
     displayProperty: function displayProperty(obj) {
-      return String(this.getPropertyByAttribute(obj, this.displayAttribute));
+      var value = String(this.getPropertyByAttribute(obj, this.displayAttribute));
+      if (value === 'null') value = '';
+      return value;
     },
     valueProperty: function valueProperty(obj) {
       return this.getPropertyByAttribute(obj, this.valueAttribute);
@@ -367,6 +380,7 @@ var VueSimpleSuggest = {
 
       this.$emit('select', item);
 
+      this.genSuggestions();
       this.autocompleteText(this.displayProperty(item));
     },
     hover: function hover(item, elem) {
@@ -390,6 +404,7 @@ var VueSimpleSuggest = {
         if (this.textLength >= this.minLength && (this.suggestions.length > 0 || !this.miscSlotsAreEmpty())) {
           this.listShown = true;
           this.$emit('show-list');
+          this.inputElement.setSelectionRange(0, this.inputElement.value.length);
         }
       }
     },
@@ -530,10 +545,7 @@ var VueSimpleSuggest = {
           return _invokeIgnored(function () {
             if (_this6.canSend) {
               _this6.canSend = false;
-              var _$set = _this6.$set;
-              return _await(_this6.getSuggestions(_this6.text), function (_this6$getSuggestions) {
-                _$set.call(_this6, _this6, 'suggestions', _this6$getSuggestions);
-              });
+              return _awaitIgnored(_this6.genSuggestions());
             }
           });
         }, function (e) {
@@ -552,21 +564,21 @@ var VueSimpleSuggest = {
         return _this6.suggestions;
       });
     }),
-    getSuggestions: _async(function (value) {
+    genSuggestions: _async(function () {
       var _this7 = this;
 
-      value = value || '';
+      var value = _this7.text || '';
 
       if (value.length < _this7.minLength) {
         if (_this7.listShown) {
           _this7.hideList();
-          return [];
+          _this7.$set(_this7, 'suggestions', []);
+          return;
         }
 
-        return _this7.suggestions;
+        _this7.$set(_this7, 'suggestions', _this7.suggestions);
+        return;
       }
-
-      _this7.selected = null;
 
       // Start request if can
       if (_this7.listIsRequest) {
@@ -578,7 +590,7 @@ var VueSimpleSuggest = {
       }
 
       var result = [];
-      return _finally(function () {
+      return _finallyRethrows(function () {
         return _catch(function () {
           return _invoke(function () {
             if (_this7.listIsRequest) {
@@ -613,12 +625,13 @@ var VueSimpleSuggest = {
             throw e;
           }
         });
-      }, function () {
+      }, function (_wasThrown, _result2) {
         if (_this7.maxSuggestions) {
           result.splice(_this7.maxSuggestions);
         }
 
-        return result;
+        _this7.$set(_this7, 'suggestions', result);
+        return _rethrow(_wasThrown, _result2);
       });
     }),
     clearSuggestions: function clearSuggestions() {
