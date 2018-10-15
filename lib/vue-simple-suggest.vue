@@ -255,7 +255,9 @@ export default {
       return this.isPlainSuggestion ? obj : typeof obj !== undefined ? fromPath(obj, attr) : obj
     },
     displayProperty (obj) {
-      return String(this.getPropertyByAttribute(obj, this.displayAttribute))
+      let value = String(this.getPropertyByAttribute(obj, this.displayAttribute));
+      if(value === 'null') value = ''
+      return value;
     },
     valueProperty (obj) {
       return this.getPropertyByAttribute(obj, this.valueAttribute)
@@ -271,6 +273,7 @@ export default {
 
       this.$emit('select', item)
 
+      this.genSuggestions()
       this.autocompleteText(this.displayProperty(item))
     },
     hover (item, elem) {
@@ -296,6 +299,7 @@ export default {
         ) {
           this.listShown = true
           this.$emit('show-list')
+          this.inputElement.setSelectionRange(0, this.inputElement.value.length)
         }
       }
     },
@@ -431,7 +435,7 @@ export default {
       try {
         if (this.canSend) {
           this.canSend = false
-          this.$set(this, 'suggestions', await this.getSuggestions(this.text))
+          await this.genSuggestions()
         }
       }
 
@@ -452,19 +456,19 @@ export default {
         return this.suggestions
       }
     },
-    async getSuggestions (value) {
-      value = value || '';
+    async genSuggestions () {
+      let value = this.text || '';
 
       if (value.length < this.minLength) {
         if (this.listShown) {
           this.hideList()
-          return []
+          this.$set(this, 'suggestions', [])
+          return
         }
 
-        return this.suggestions
+        this.$set(this, 'suggestions', this.suggestions)
+        return
       }
-
-      this.selected = null
 
       // Start request if can
       if (this.listIsRequest) {
@@ -510,7 +514,7 @@ export default {
           result.splice(this.maxSuggestions)
         }
 
-        return result
+        this.$set(this, 'suggestions', result)
       }
     },
     clearSuggestions () {
