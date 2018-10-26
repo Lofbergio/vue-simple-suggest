@@ -273,8 +273,8 @@ export default {
 
       this.$emit('select', item)
 
-      this.genSuggestions()
       this.autocompleteText(this.displayProperty(item))
+      this.genSuggestions()
     },
     hover (item, elem) {
       this.hovered = item
@@ -297,9 +297,9 @@ export default {
         if (this.textLength >= this.minLength
           && ((this.suggestions.length > 0) || !this.miscSlotsAreEmpty())
         ) {
+          this.inputElement.setSelectionRange(0, this.inputElement.value.length)
           this.listShown = true
           this.$emit('show-list')
-          this.inputElement.setSelectionRange(0, this.inputElement.value.length)
         }
       }
     },
