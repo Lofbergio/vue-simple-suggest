@@ -380,8 +380,8 @@ var VueSimpleSuggest = {
 
       this.$emit('select', item);
 
-      this.genSuggestions();
       this.autocompleteText(this.displayProperty(item));
+      this.genSuggestions();
     },
     hover: function hover(item, elem) {
       this.hovered = item;
@@ -402,9 +402,9 @@ var VueSimpleSuggest = {
     showList: function showList() {
       if (!this.listShown) {
         if (this.textLength >= this.minLength && (this.suggestions.length > 0 || !this.miscSlotsAreEmpty())) {
+          this.inputElement.setSelectionRange(0, this.inputElement.value.length);
           this.listShown = true;
           this.$emit('show-list');
-          this.inputElement.setSelectionRange(0, this.inputElement.value.length);
         }
       }
     },
